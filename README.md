@@ -20,7 +20,7 @@ hh:mm | 20:00 | At 20:00
 
 
 # Evaluation of definitions
-You can add multiple definitions in one line with a semicolon, f.e. ```mon-fri 20:00 ; sat-sun 16:00; 12/01 - 01/31 mon-fri 22:00; 12/01 - 01/31 sat-sun 21:00```
+You can add multiple definitions in one line seperated by a ```;```
 
 More specific dates win - less specific will not be considered in case there is a more specifc one.
 
@@ -32,3 +32,10 @@ Evaluation order is as shown below. In case of a date hit (independent of time h
  1. mon 20:00
  1. 20:00
 
+
+**Example:**  ```mon-fri 20:00 ; sat-sun 16:00; 12/01 - 01/31 mon-fri 22:00; 12/01 - 01/31 sat-sun 21:00```
+Result: 
+ - Monday to Friday at 20:00     (Will just be evaluated from February 1st until November 30th)
+ - Saturday and Sunday at 16:00  (Will just be evaluated from February 1st until November 30th)
+ - Monday to Friday from December 1st until January 31st at 22:00
+ - Saturday and Sunday from December 1st until January 31st at 21:00
