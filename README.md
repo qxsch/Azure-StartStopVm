@@ -24,7 +24,7 @@ You can add multiple definitions in one line seperated by a ```;```
 
 More specific dates win - less specific will not be considered in case there is a more specifc one.
 
-Evaluation order is as shown below. In case of a date hit (independent of time hit), lower priorities will not be evaluated.
+Evaluation order is as shown below. In case of a date hit (independent of time hit), lower priorities will not be evaluated. However, all entries in the same priority bucket will always be evaluated.
  1. 12/30 mon 20:00
  1. 12/30 20:00
  1. 12 mon 20:00
@@ -39,3 +39,13 @@ Result:
  - Saturday and Sunday at 16:00  (Will just be evaluated from February 1st until November 30th)
  - Monday to Friday from December 1st until January 31st at 22:00
  - Saturday and Sunday from December 1st until January 31st at 21:00
+
+
+**Please be aware**
+ - The following rule will trigger on a daily basis with highest (1st) priority ```01/01-12/31 mon-sun 20:00``` and "disable" lower priorities 2 - 6.
+ - The following rule will trigger on a daily basis with 2nd priority ```01/01-12/31 20:00``` and "disable" lower priorities 3 - 6. (In case priority 2 gets evaluated.)
+ - The following rule will trigger on a daily basis with 3rd priority ```01-12 mon-sun 20:00``` and "disable" lower priorities 4 - 6. (In case priority 3 gets evaluated.)
+ - The following rule will trigger on a daily basis with 4th priority ```01-12 20:00``` and "disable" lower priorities 5 - 6. (In case priority 4 gets evaluated.)
+ - The following rule will trigger on a daily basis with 5th priority ```01-12 20:00``` and "disable" lower priority 6. (In case priority 5 gets evaluated.)
+
+ 
