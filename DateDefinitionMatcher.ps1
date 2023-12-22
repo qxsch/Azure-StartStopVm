@@ -261,7 +261,9 @@ class DateDefinitionMatcher {
         $t = $h["Time"] -split ":"
         $t[0] = [int]$t[0]
         $t[1] = [int]$t[1]
-
+        if($t[0] -ge 24) {
+            return $false
+        }
         if($this.FromTime.Hour -gt $this.UntilTime.Hour) {
             if(
                 ($t[0] -gt $this.FromTime.Hour  -or  $t[0] -lt $this.UntilTime.Hour) -or
