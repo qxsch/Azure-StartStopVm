@@ -46,6 +46,6 @@ Result:
  - The following rule will trigger on a daily basis with 2nd priority ```01/01 - 12/31   20:00``` and "disable" lower priorities 3 - 6. (In case priority 2 gets evaluated.)
  - The following rule will trigger on a daily basis with 3rd priority ```01 - 12  mon-sun 20:00``` and "disable" lower priorities 4 - 6. (In case priority 3 gets evaluated.)
  - The following rule will trigger on a daily basis with 4th priority ```01 - 12  20:00``` and "disable" lower priorities 5 - 6. (In case priority 4 gets evaluated.)
- - The following rule will trigger on a daily basis with 5th priority ```01 - 12  20:00``` and "disable" lower priority 6. (In case priority 5 gets evaluated.)
+ - The following rule will trigger on a daily basis with 5th priority ```mon-sun  20:00``` and "disable" lower priority 6. (In case priority 5 gets evaluated.)
 
  
