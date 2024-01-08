@@ -21,8 +21,7 @@ $data = [PSCustomObject]@{
 
 $data.Action = $data.Action.ToLower()
 
-# connecting using managed identity
-Connect-AzAccount -Identity
+$armToken = (Get-AzAccessToken).Token
 
 function Get-DateWithTimeZone {
     param(
@@ -395,8 +394,10 @@ foreach($r in $data.Resources) {
         if($data.Action -eq "start") {
             Write-Host "Starting VM $($r.Name) (seq: $sequenceNum, id: $($r.Id))"
             try {
-                Select-AzSubscription -SubscriptionId $r.SubscriptionId -ErrorAction Stop
-                Start-AzVM  -Name $r.Name -ResourceGroupName $r.ResourceGroupName -ErrorAction Stop
+                # Select-AzSubscription -SubscriptionId $r.SubscriptionId -ErrorAction Stop | Out-Null
+                # Start-AzVM  -Name $r.Name -ResourceGroupName $r.ResourceGroupName -ErrorAction Stop | Out-Null
+                # below is faster https://learn.microsoft.com/en-us/rest/api/compute/virtual-machines/start?view=rest-compute-2023-09-01&tabs=HTTP
+                Invoke-RestMethod -Uri ("https://management.azure.com" + $r.Id + "/start?api-version=2023-09-01" ) -Method "Post"  -Headers @{"Authorization" = "Bearer $armToken"; "Content-Type" = "application/json" } | Out-Null
             }
             catch {
                 Write-Host "Failed to start VM $($r.Name) (seq: $sequenceNum, id: $($r.Id)) with error:`n$($_.Exception.Message)"
@@ -405,11 +406,13 @@ foreach($r in $data.Resources) {
         else {
             Write-Host "Stopping VM $($r.Name) (seq: $sequenceNum, id: $($r.Id))"
             try {
-                Select-AzSubscription -SubscriptionId $r.SubscriptionId -ErrorAction Stop
-                Stop-AzVM -Name $r.Name -ResourceGroupName $r.ResourceGroupName -Force -ErrorAction Stop
+                # Select-AzSubscription -SubscriptionId $r.SubscriptionId -ErrorAction Stop | Out-Null
+                # Stop-AzVM -Name $r.Name -ResourceGroupName $r.ResourceGroupName -Force -ErrorAction Stop | Out-Null
+                # below is faster https://learn.microsoft.com/en-us/rest/api/compute/virtual-machines/deallocate?view=rest-compute-2023-09-01&tabs=HTTP
+                Invoke-RestMethod -Uri ("https://management.azure.com" + $r.Id + "/deallocate?api-version=2023-09-01" ) -Method "Post"  -Headers @{"Authorization" = "Bearer $armToken"; "Content-Type" = "application/json" } | Out-Null
             }
             catch {
-                Write-Host "Failed to start VM $($r.Name) (seq: $sequenceNum, id: $($r.Id)) with error:`n$($_.Exception.Message)"
+                Write-Host "Failed to stop VM $($r.Name) (seq: $sequenceNum, id: $($r.Id)) with error:`n$($_.Exception.Message)"
             }
 
         }

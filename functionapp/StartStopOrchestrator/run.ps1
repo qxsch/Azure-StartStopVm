@@ -5,13 +5,26 @@ param($Context)
 
 Import-Module Az.ResourceGraph -ErrorAction Stop
 
+<#
+Use provisioningState == Succeeded to avoid shutting down VMs that are being created or updated
 
+The following table lists the possible values for the powerState property.
+Meaning             Property value
+------------------  -------------------------------
+Deallocated	        PowerState/deallocated
+Deallocating        PowerState/deallocating
+Running             PowerState/running
+Starting            PowerState/starting
+Stopped             PowerState/stopped
+Stopping            PowerState/stopping
+Unknown             PowerState/unknown
+#>
 $StopQuery = "resources 
-| where ['type'] == 'microsoft.compute/virtualmachines' and tags['narcovm:stop:time'] != ''
+| where ['type'] == 'microsoft.compute/virtualmachines' and tags['narcovm:stop:time'] != '' and properties.provisioningState=~'succeeded' and properties.extended.instanceView.powerState.code contains 'running'
 | extend  narcosisseq = case(isnull(toint(tags['narcovm:stop:sequence'])), 1000000, toint(tags['narcovm:stop:sequence']))
 | order by narcosisseq"
 $StartQuery = "resources 
-| where ['type'] == 'microsoft.compute/virtualmachines' and tags['narcovm:start:time'] != ''
+| where ['type'] == 'microsoft.compute/virtualmachines' and tags['narcovm:start:time'] != '' and properties.provisioningState=~'succeeded' and (properties.extended.instanceView.powerState.code contains 'deallocated' or properties.extended.instanceView.powerState.code contains 'stopped')
 | extend  narcosisseq = case(isnull(toint(tags['narcovm:start:sequence'])), 1000000, toint(tags['narcovm:start:sequence']))
 | order by narcosisseq"
 
