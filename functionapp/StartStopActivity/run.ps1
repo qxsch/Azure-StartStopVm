@@ -21,6 +21,8 @@ $data = [PSCustomObject]@{
 
 $data.Action = $data.Action.ToLower()
 
+"Executing $($data.Action)" # we need to output something, otherwise Wait-DurableTask will fail with an exception
+
 $armToken = (Get-AzAccessToken).Token
 
 function Get-DateWithTimeZone {
@@ -79,14 +81,14 @@ class DateDefinitionMatcher {
         $this.setTimeRange($d[0], $d[1])
     }
     [void] setTimeRange([datetime]$FromTime, [datetime]$UntilTime) {
-        $this.FromTime = $FromTime
-        $this.UntilTime = $UntilTime
-        if($this.FromTime -gt $this.UntilTime) {
+        if($FromTime -gt $UntilTime) {
             throw "FromTime must be less than UntilTime"
         }
         if(($UntilTime - $FromTime).TotalMinutes -gt 1200) {
             throw "Date range must be less than 20 hours"
         }
+        $this.FromTime = $FromTime
+        $this.UntilTime = $UntilTime
         if($this.FromTime.Day -eq $this.UntilTime.Day) {
             $this.compareSingleDate = $true
         }
@@ -355,28 +357,41 @@ $currentTimeZone = "UTC"
 # iterating through resources
 foreach($r in $data.Resources) {
     # time definition
-    $timeDef  = [string]$r.Tags."narcovm:$($data.Action):time"
+    $timeDef  = [string]$r.tags."narcovm:$($data.Action):time"
     # sequence number for logging purposes
     if($r.narcosisseq) {
         $sequenceNum = $r.narcosisseq
     }
     else {
         $sequenceNum = 1000000
-        if($null -ne $r.Tags."narcovm:$($data.Action):sequence") {
-            if(-not [Int32]::TryParse($r.Tags."narcovm:$($data.Action):sequence", [ref]$sequenceNum)) {
+        if($r.tags."narcovm:$($data.Action):sequence") {
+            [Int32]::TryParse($r.tags."narcovm:$($data.Action):sequence", [ref]$sequenceNum) | Out-Null
+            if($sequenceNum -le 0) {
+                Write-Error "Invalid sequence definition for VM $($r.name) (id: $($r.id))"
                 $sequenceNum = 1000000
             }
         }
     }
     # setting date range and timezone (if required)
-    if($r.Tags."narcovm:timezone") {
-        if($r.Tags."narcovm:timezone" -ne $currentTimeZone) {
-            $dtm.setTimeRange(
-                (Get-DateWithTimeZone -Date $data.Time.FromTime -TimeZone $r.Tags."narcovm:timezone"),
-                (Get-DateWithTimeZone -Date $data.Time.UntilTime -TimeZone $r.Tags."narcovm:timezone")
-            )
+    if($r.tags."narcovm:timezone") {
+        try {
+            if($r.tags."narcovm:timezone" -ne $currentTimeZone) {
+                $dtm.setTimeRange(
+                    (Get-DateWithTimeZone -Date $data.Time.FromTime -TimeZone $r.tags."narcovm:timezone"),
+                    (Get-DateWithTimeZone -Date $data.Time.UntilTime -TimeZone $r.tags."narcovm:timezone")
+                )
+            }
+            $currentTimeZone = $r.tags."narcovm:timezone"
         }
-        $currentTimeZone = $r.Tags."narcovm:timezone"
+        catch {
+            Write-Error "Invalid timezone definition for VM $($r.name) (id: $($r.id))"
+            # in case of an error, we fall back to UTC
+            $dtm.setTimeRange(
+                $data.Time.FromTime,
+                $data.Time.UntilTime
+            )
+            $currentTimeZone = "UTC"
+        }
     }
     else {
         if("UTC" -ne $currentTimeZone) {
@@ -384,38 +399,37 @@ foreach($r in $data.Resources) {
                 $data.Time.FromTime,
                 $data.Time.UntilTime
             )
+            $currentTimeZone = "UTC"
         }
-        $currentTimeZone = "UTC"
     }
+    #Write-Host ("Processing VM $($r.name) (id: $($r.id))`nTimeDef: $timedef`nTimezone $currentTimeZone`nSequence: $sequenceNum")
 
     # checking if we have a hit
     if($dtm.isWithinDateDefinition($timeDef)) {
         # we have a hit
         if($data.Action -eq "start") {
-            Write-Host "Starting VM $($r.Name) (seq: $sequenceNum, id: $($r.Id))"
+            Write-Host "Starting VM $($r.name) (seq: $sequenceNum, id: $($r.id))"
             try {
                 # Select-AzSubscription -SubscriptionId $r.SubscriptionId -ErrorAction Stop | Out-Null
-                # Start-AzVM  -Name $r.Name -ResourceGroupName $r.ResourceGroupName -ErrorAction Stop | Out-Null
+                # Start-AzVM  -Name $r.name -ResourceGroupName $r.resourceGroup -ErrorAction Stop | Out-Null
                 # below is faster https://learn.microsoft.com/en-us/rest/api/compute/virtual-machines/start?view=rest-compute-2023-09-01&tabs=HTTP
-                Invoke-RestMethod -Uri ("https://management.azure.com" + $r.Id + "/start?api-version=2023-09-01" ) -Method "Post"  -Headers @{"Authorization" = "Bearer $armToken"; "Content-Type" = "application/json" } | Out-Null
+                Invoke-RestMethod -Uri ("https://management.azure.com" + $r.id + "/start?api-version=2023-09-01" ) -Method "Post"  -Headers @{"Authorization" = "Bearer $armToken"; "Content-Type" = "application/json" } | Out-Null
             }
             catch {
-                Write-Host "Failed to start VM $($r.Name) (seq: $sequenceNum, id: $($r.Id)) with error:`n$($_.Exception.Message)"
+                Write-Error "Failed to start VM $($r.name) (seq: $sequenceNum, id: $($r.id)) with error:`n$($_.Exception.Message)"
             }
         }
         else {
-            Write-Host "Stopping VM $($r.Name) (seq: $sequenceNum, id: $($r.Id))"
+            Write-Host "Deallocating VM $($r.name) (seq: $sequenceNum, id: $($r.id))"
             try {
                 # Select-AzSubscription -SubscriptionId $r.SubscriptionId -ErrorAction Stop | Out-Null
-                # Stop-AzVM -Name $r.Name -ResourceGroupName $r.ResourceGroupName -Force -ErrorAction Stop | Out-Null
+                # Stop-AzVM -Name $r.name -ResourceGroupName $r.resourceGroup -Force -ErrorAction Stop | Out-Null
                 # below is faster https://learn.microsoft.com/en-us/rest/api/compute/virtual-machines/deallocate?view=rest-compute-2023-09-01&tabs=HTTP
-                Invoke-RestMethod -Uri ("https://management.azure.com" + $r.Id + "/deallocate?api-version=2023-09-01" ) -Method "Post"  -Headers @{"Authorization" = "Bearer $armToken"; "Content-Type" = "application/json" } | Out-Null
+                Invoke-RestMethod -Uri ("https://management.azure.com" + $r.id + "/deallocate?api-version=2023-09-01" ) -Method "Post"  -Headers @{"Authorization" = "Bearer $armToken"; "Content-Type" = "application/json" } | Out-Null
             }
             catch {
-                Write-Host "Failed to stop VM $($r.Name) (seq: $sequenceNum, id: $($r.Id)) with error:`n$($_.Exception.Message)"
+                Write-Error "Failed to deallocate VM $($r.name) (seq: $sequenceNum, id: $($r.id)) with error:`n$($_.Exception.Message)"
             }
-
         }
     }
-    
 }

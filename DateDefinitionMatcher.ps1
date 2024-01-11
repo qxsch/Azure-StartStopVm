@@ -54,14 +54,14 @@ class DateDefinitionMatcher {
         $this.setTimeRange($d[0], $d[1])
     }
     [void] setTimeRange([datetime]$FromTime, [datetime]$UntilTime) {
-        $this.FromTime = $FromTime
-        $this.UntilTime = $UntilTime
-        if($this.FromTime -gt $this.UntilTime) {
+        if($FromTime -gt $UntilTime) {
             throw "FromTime must be less than UntilTime"
         }
         if(($UntilTime - $FromTime).TotalMinutes -gt 1200) {
             throw "Date range must be less than 20 hours"
         }
+        $this.FromTime = $FromTime
+        $this.UntilTime = $UntilTime
         if($this.FromTime.Day -eq $this.UntilTime.Day) {
             $this.compareSingleDate = $true
         }

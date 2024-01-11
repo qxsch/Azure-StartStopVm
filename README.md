@@ -6,9 +6,9 @@ In other words: A Tag-Based shutdown and startup of VMs in Azure to save costs.
 # Supported tags on virtual machines
 The following tags are supported on virtual machines.
 * ```narcovm:start:time``` - Optional Semicolon-separated list of start times. See supported start-stop time formats below.
-* ```narcovm:start:sequence```  - Optional sequence number of for start. (lower number first, default is 1 million ```1000000```)
+* ```narcovm:start:sequence```  - Optional sequence number for start. (lower number first, greater than 0, default is 1 million ```1000000```)
 * ```narcovm:stop:time```  - Optional Semicolon-separated list of stop times. See supported start-stop time formats below.
-* ```narcovm:stop:sequence```   - Optional sequence number of for stop.  (lower number first, default is 1 million ```1000000```)
+* ```narcovm:stop:sequence```   - Optional sequence number bigger for stop.  (lower number first, greater than 0, default is 1 million ```1000000```)
 * ```narcovm:timezone```   - Optional sequence number of for stop.  (default is ```UTC```)
   * [See FindSystemTimeZoneById for more information](https://learn.microsoft.com/en-us/dotnet/api/system.timezoneinfo.findsystemtimezonebyid?view=net-8.0)
   * [See GetSystemTimeZones for more information](https://learn.microsoft.com/en-us/dotnet/api/system.timezoneinfo.getsystemtimezones?view=net-8.0)

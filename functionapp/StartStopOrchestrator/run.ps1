@@ -112,11 +112,14 @@ function ExecuteGraphQuery {
 
 
 # stopping eligable vms
+Write-Host "Executing stop query with $batchSize batch size and from $($Context.Input.FromTime) until $($Context.Input.UntilTime)"
 ExecuteGraphQuery -Query $StopQuery -BatchSize $BatchSize -Action "stop" -FromTime $Context.Input.FromTime -UntilTime $Context.Input.UntilTime
 
 # starting eligable vms
+Write-Host "Executing start query with $batchSize batch size and from $($Context.Input.FromTime) until $($Context.Input.UntilTime)"
 ExecuteGraphQuery -Query $StartQuery -BatchSize $BatchSize -Action "start" -FromTime $Context.Input.FromTime -UntilTime $Context.Input.UntilTime
 
+Write-Host "Orchestrator done"
 
 "Done"
 
