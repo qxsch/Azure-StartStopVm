@@ -15,6 +15,13 @@ $data = [PSCustomObject]@{
     }
     "Action" = "stop"
     "Resources" = @(
+        @{
+            id = [string]
+            name = [string]
+            narcosisseq = [int]
+            narcosistime = [string]
+            narcosistimezone = [string|null]
+        }
     )
 }
 #>
@@ -357,31 +364,29 @@ $currentTimeZone = "UTC"
 # iterating through resources
 foreach($r in $data.Resources) {
     # time definition
-    $timeDef  = [string]$r.tags."narcovm:$($data.Action):time"
+    $timeDef = [string]$r.narcosistime
+    if($timeDef -eq "") {
+        continue
+    }
     # sequence number for logging purposes
-    if($r.narcosisseq) {
-        $sequenceNum = $r.narcosisseq
-    }
-    else {
+    $sequenceNum = 0
+    [Int32]::TryParse($r.narcosisseq, [ref]$sequenceNum) | Out-Null
+    if($sequenceNum -le 0) {
+        Write-Error "Invalid sequence definition for VM $($r.name) (id: $($r.id))"
         $sequenceNum = 1000000
-        if($r.tags."narcovm:$($data.Action):sequence") {
-            [Int32]::TryParse($r.tags."narcovm:$($data.Action):sequence", [ref]$sequenceNum) | Out-Null
-            if($sequenceNum -le 0) {
-                Write-Error "Invalid sequence definition for VM $($r.name) (id: $($r.id))"
-                $sequenceNum = 1000000
-            }
-        }
     }
+    # timezone definition
+    $timezoneDef = [string]$r.narcosistimezone
     # setting date range and timezone (if required)
-    if($r.tags."narcovm:timezone") {
+    if($timezoneDef -and $timezoneDef.ToUpper() -ne "UTC") {
         try {
-            if($r.tags."narcovm:timezone" -ne $currentTimeZone) {
+            if($timezoneDef -ne $currentTimeZone) {
                 $dtm.setTimeRange(
-                    (Get-DateWithTimeZone -Date $data.Time.FromTime -TimeZone $r.tags."narcovm:timezone"),
-                    (Get-DateWithTimeZone -Date $data.Time.UntilTime -TimeZone $r.tags."narcovm:timezone")
+                    (Get-DateWithTimeZone -Date $data.Time.FromTime -TimeZone $timezoneDef),
+                    (Get-DateWithTimeZone -Date $data.Time.UntilTime -TimeZone $timezoneDef)
                 )
             }
-            $currentTimeZone = $r.tags."narcovm:timezone"
+            $currentTimeZone = $timezoneDef
         }
         catch {
             Write-Error "Invalid timezone definition for VM $($r.name) (id: $($r.id))"
