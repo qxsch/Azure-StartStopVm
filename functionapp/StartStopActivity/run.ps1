@@ -13,11 +13,11 @@ $data = [PSCustomObject]@{
         "FromTime"       = $Context.Input.FromTime
         "UntilTime"      = $Context.Input.UntilTime
     }
-    "Action" = "stop"
+    "Action" = "stop|start"
     "Resources" = @(
         @{
             id = [string]
-            name = [string]
+            name = [string|null]
             narcosisseq = [int]
             narcosistime = [string]
             narcosistimezone = [string|null]
@@ -363,6 +363,17 @@ $dtm = [DateDefinitionMatcher]::new($data.Time.FromTime, $data.Time.UntilTime)
 $currentTimeZone = "UTC"
 # iterating through resources
 foreach($r in $data.Resources) {
+    # name empty?
+    if(-not ($r.name)) {
+        $seg = ($r.id -split '/')
+        if($seg[1] -eq "subscriptions" -and $seg[3] -eq "resourceGroups" -and $seg[5] -eq "providers" -and $seg[6] -eq "Microsoft.Compute" -and $seg[7] -eq "virtualMachines") {
+            $r.name = $seg[8]
+        }
+        else {
+            Write-Error "Not a valid VM Resource ID: $($r.id)"
+            continue
+        }
+    }
     # time definition
     $timeDef = [string]$r.narcosistime
     if($timeDef -eq "") {
